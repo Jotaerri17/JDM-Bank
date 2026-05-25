@@ -1,4 +1,4 @@
-#
+
 from database import obter_conexao
 
 def criar_tabelas():
