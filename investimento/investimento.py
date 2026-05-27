@@ -1,6 +1,6 @@
 
 import requests
-from database import obter_conexao
+from database.database import obter_conexao
 
 def obter_cotacao_moeda(moeda):
     """

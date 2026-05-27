@@ -1,5 +1,25 @@
+import os
+import psycopg2
+from dotenv import load_dotenv
 
-from database import obter_conexao
+load_dotenv()
+
+def obter_conexao():
+    url = os.getenv("NEON_DB_URL")
+    
+    
+    if not url:
+        print("❌ ERRO: O arquivo .env não foi carregado ou a variável NEON_DB_URL está vazia/com nome errado.")
+        return None
+        
+    try:
+        conexao = psycopg2.connect(url)
+        return conexao
+    except Exception as e:
+        print(f"❌ Erro ao conectar ao banco de dados: {e}")
+        return None
+    
+
 
 def criar_tabelas():
     conexao = obter_conexao()
@@ -16,6 +36,7 @@ def criar_tabelas():
             nome VARCHAR(100) NOT NULL,
             email VARCHAR(100) UNIQUE NOT NULL,
             cpf VARCHAR(14) UNIQUE NOT NULL,
+            senha VARCHAR(255) NOT NULL,
             telefone VARCHAR(20),
             idade INT CHECK (idade >= 18),
             data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
