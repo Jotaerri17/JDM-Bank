@@ -30,6 +30,10 @@ def criar_tabelas():
 
     
     queries = [
+        "DROP TABLE IF EXISTS investimentos_usuarios CASCADE;",
+        "DROP TABLE IF EXISTS tipos_investimento CASCADE;",
+        "DROP TABLE IF EXISTS movimentacoes CASCADE;",
+        "DROP TABLE IF EXISTS usuarios CASCADE;",
         """
         CREATE TABLE IF NOT EXISTS usuarios (
             id SERIAL PRIMARY KEY,
@@ -38,7 +42,7 @@ def criar_tabelas():
             cpf VARCHAR(14) UNIQUE NOT NULL,
             senha VARCHAR(255) NOT NULL,
             telefone VARCHAR(20),
-            idade INT CHECK (idade >= 18),
+            idade INT NOT NULL,
             data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             saldo NUMERIC(15,2) DEFAULT 0.00
         );

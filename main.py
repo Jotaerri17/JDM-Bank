@@ -1,6 +1,7 @@
 import sys
 from database.database import obter_conexao
 from transferencias.transferencias import realizar_deposito, realizar_transferencia
+from auth.auth import criar_usuario, autenticar_usuario
 
 # Mapeamento do diretório/arquivo correto para o terminal achar o script
 from investimento.investimento import investir
@@ -120,7 +121,7 @@ def app():
             try:
                 idade = int(input("Idade: "))
                 senha = input("Defina sua Senha: ")
-                criar_usuario(nome, email, cpf, telefone, idade, senha)
+                criar_usuario(nome, email, cpf, senha, telefone, idade)
             except ValueError:
                 print("❌ Erro: Idade deve conter apenas números inteiros.")
 

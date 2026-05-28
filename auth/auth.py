@@ -1,7 +1,7 @@
 from database.database import obter_conexao
 
 
-def criar_usuario(nome, email, cpf, telefone, idade):
+def criar_usuario(nome, email, cpf, senha, telefone, idade):
     """Cadastra um novo usuário no banco de dados."""
     if idade < 18:
         print("❌ Erro: O usuário precisa ter 18 anos ou mais.")
@@ -14,12 +14,12 @@ def criar_usuario(nome, email, cpf, telefone, idade):
     cursor = conexao.cursor()
 
     sql = """
-        INSERT INTO usuarios (nome, email, cpf, telefone, idade)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO usuarios (nome, email, cpf, senha, telefone, idade)
+        VALUES (%s, %s, %s, %s, %s, %s)
     """
     
     try:
-        cursor.execute(sql, (nome, email, cpf, telefone, idade))
+        cursor.execute(sql, (nome, email, cpf, senha, telefone, idade))
         conexao.commit()
         print(f"✅ Usuário {nome} cadastrado com sucesso!")
         return True
@@ -32,29 +32,35 @@ def criar_usuario(nome, email, cpf, telefone, idade):
         conexao.close()
 
 
-def autenticar_usuario(email, cpf):
-    """Verifica se o e-mail e CPF batem com algum usuário no banco e retorna a sessão."""
+def autenticar_usuario(cpf, senha):
+    """Verifica se o CPF e a Senha batem com algum usuário no banco e retorna a sessão."""
     conexao = obter_conexao()
     if not conexao:
         return None
 
     cursor = conexao.cursor()
     try:
-        cursor.execute("SELECT id, nome, saldo FROM usuarios WHERE email = %s AND cpf = %s", (email, cpf))
+        # Busca o ID, nome e saldo filtrando por CPF e Senha
+        cursor.execute(
+            "SELECT id, nome, saldo FROM usuarios WHERE cpf = %s AND senha = %s", 
+            (cpf, senha)
+        )
         usuario = cursor.fetchone()
         
         if usuario:
-            # Retorna um dicionário com os dados essenciais da sessão
+            
             return {
                 "id": usuario[0],
                 "nome": usuario[1],
-                "saldo": float(usuario[2]) # Converte de Decimal do banco para Float do Python
+                "saldo": float(usuario[2]) # Converte o Decimal do Postgres para Float do Python
             }
-        else:
-            return None
+            
+        return None 
+
     except Exception as e:
         print(f"❌ Erro ao autenticar: {e}")
         return None
+        
     finally:
         cursor.close()
         conexao.close()
