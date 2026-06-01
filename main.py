@@ -42,7 +42,8 @@ def menu_logado(usuario):
         print("3. Executar Investimento")
         print("4. Ver Extrato de Movimentações")
         print("5. Ver Carteira de Investimentos")
-        print("6. Sair da Conta (Logout)")
+        print("6. Resgatar/Vender Investimento")
+        print("7. Sair da Conta (Logout)")
         print("="*40)
         
         opcao = input("Escolha uma opção: ")
@@ -79,7 +80,15 @@ def menu_logado(usuario):
         elif opcao == '5':
             exibir_carteira_investimentos(usuario['id'])
 
+        # Exemplo de lógica para encaixar no seu menu_logado ou menu de investimentos no main.py:
+
         elif opcao == '6':
+            print("\n--- RESGATE DE INVESTIMENTOS ---")
+            from investimento.investimento import resgatar_investimento
+            # Agora só passamos o ID do usuário conectado, a função faz o resto!
+            resgatar_investimento(usuario['id'])
+
+        elif opcao == '7':
             print("🔒 Sessão encerrada de forma segura.")
             break
         else:

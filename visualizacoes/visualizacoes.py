@@ -72,40 +72,43 @@ def exibir_extrato(usuario_id):
 
 
 def exibir_carteira_investimentos(usuario_id):
-    """Realiza um JOIN para buscar as aplicações do usuário e o nome do ativo."""
+    """Busca e exibe os investimentos ativos do usuário, incluindo o ID da aplicação."""
     conexao = obter_conexao()
     if not conexao:
         return
 
     cursor = conexao.cursor()
     try:
-        print("\n" + "="*60)
-        print(" 📈 CARTEIRA DE INVESTIMENTOS ATIVOS")
-        print("="*60)
-
-        cursor.execute("""
-            SELECT t.nome, i.valor_investido, i.cotacao_compra, i.data_aplicacao 
-            FROM investimentos_usuarios i
-            JOIN tipos_investimento t ON i.investimento_id = t.id
-            WHERE i.usuario_id = %s
-            ORDER BY i.data_aplicacao DESC
-        """, (usuario_id,))
-        
+        # ATENÇÃO AQUI: Adicionado 'iu.id' logo no início do SELECT
+        query = """
+            SELECT iu.id, ti.nome, iu.valor_investido, iu.cotacao_compra, iu.data_aplicacao
+            FROM investimentos_usuarios iu
+            JOIN tipos_investimento ti ON iu.investimento_id = ti.id
+            WHERE iu.usuario_id = %s
+            ORDER BY iu.data_aplicacao DESC
+        """
+        cursor.execute(query, (usuario_id,))
         investimentos = cursor.fetchall()
-        
+
+        print("\n" + "="*75)
+        print(" 📈 CARTEIRA DE INVESTIMENTOS ATIVOS")
+        print("="*75)
+
         if not investimentos:
-            print("   Você ainda não possui investimentos aplicados.")
+            print("Você não possui investimentos ativos no momento.")
         else:
-            print(f" {'Ativo':<10} | {'Valor Aplicado':<15} | {'Cotação Compra':<15} | {'Data':<12}")
-            print("-" * 60)
-            for nome, valor, cotacao, data in investimentos:
-                data_formatada = data.strftime("%d/%m/%Y")
-                cotacao_val = f"R$ {cotacao:.2f}" if cotacao else "N/A"
-                print(f" {nome:<10} | R$ {valor:<12.2f} | {cotacao_val:<15} | {data_formatada:<12}")
-                
-        print("="*60)
+            # Cabeçalho da tabela com a coluna ID
+            print(f"{'ID':<5} | {'Ativo':<20} | {'Valor Aplicado':<15} | {'Cotação Compra':<15} | {'Data'}")
+            print("-" * 75)
+            
+            # Loop imprimindo os dados com o ID (inv_id)
+            for inv_id, nome, valor, cotacao, data in investimentos:
+                data_str = data.strftime('%d/%m/%Y')
+                print(f"{inv_id:<5} | {nome:<20} | R$ {valor:<12.2f} | R$ {cotacao:<12.2f} | {data_str}")
+        print("="*75)
+
     except Exception as e:
-        print(f"❌ Erro ao carregar investimentos: {e}")
+        print(f"❌ Erro ao buscar carteira: {e}")
     finally:
         cursor.close()
         conexao.close()

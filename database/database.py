@@ -51,7 +51,7 @@ def criar_tabelas():
         CREATE TABLE IF NOT EXISTS movimentacoes (
             id SERIAL PRIMARY KEY,
             usuario_id INT REFERENCES usuarios(id),
-            tipo VARCHAR(25) NOT NULL,
+            tipo VARCHAR(100) NOT NULL,
             valor NUMERIC(15,2) NOT NULL,
             email_destino VARCHAR(100),
             data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -62,7 +62,8 @@ def criar_tabelas():
             id SERIAL PRIMARY KEY,
             nome VARCHAR(50) NOT NULL,
             taxa_rendimento NUMERIC(5,2),
-            taxa_operacao NUMERIC(5,2) DEFAULT 0.00
+   6
+           taxa_operacao NUMERIC(5,2) DEFAULT 0.00
         );
         """,
         """
@@ -89,5 +90,40 @@ def criar_tabelas():
         cursor.close()
         conexao.close()
 
+
+        # Adicione isso ao final do seu database.py
+
+def popular_investimentos_padrao():
+    conexao = obter_conexao()
+    if not conexao:
+        return
+    cursor = conexao.cursor()
+    
+    # Inserindo os 3 produtos com IDs automáticos
+    produtos = [
+        ('CDB Pós-Fixado',),
+        ('FII JDM Properties',),
+        ('Bitcoin (BTC)',)
+    ]
+    
+    try:
+        for (nome,) in produtos:
+            # Só insere o produto se ele já não existir pelo nome
+            cursor.execute("""
+                INSERT INTO tipos_investimento (nome)
+                SELECT %s
+                WHERE NOT EXISTS (SELECT 1 FROM tipos_investimento WHERE nome = %s);
+            """, (nome, nome))
+        conexao.commit()
+        print("✅ Tipos de investimentos verificados/populados com sucesso!")
+    except Exception as e:
+        print(f"❌ Erro ao popular investimentos: {e}")
+    finally:
+        cursor.close()
+        conexao.close()
+
+# Altere o bloco principal do database.py para executar também essa função:
 if __name__ == "__main__":
     criar_tabelas()
+    popular_investimentos_padrao()
+
