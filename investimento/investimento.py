@@ -28,16 +28,14 @@ def obter_taxa_selic():
         url = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json"
         response = requests.get(url, timeout=5)
         dados = response.json()
-        # A API retorna uma lista com o dicionário contendo a data e o valor (ex: "10.50")
         return float(dados[0]["valor"])
     except Exception as e:
         print(f"⚠️ Erro ao buscar Taxa Selic na API do Banco Central: {e}")
-        # Valor padrão de segurança caso a API do Banco Central esteja fora do ar temporariamente
-        return 10.50 
+        return 10.50  # Valor de segurança (Fallback)
 
 def investir(usuario_id, investimento_id, valor_reais):
     """
-    Realiza a aplicação do saldo do usuário em um investimento específico,
+    Realiza a aplicação do saldo do usuário em um investmento específico,
     salvando as taxas/cotações reais do momento da compra.
     """
     if valor_reais <= 0:
@@ -45,9 +43,7 @@ def investir(usuario_id, investimento_id, valor_reais):
         return False
 
     conexao = obter_conexao()
-    if not conexao:
-        return False
-
+    if not conexao: return False
     cursor = conexao.cursor()
 
     try:
@@ -73,11 +69,9 @@ def investir(usuario_id, investimento_id, valor_reais):
             return False
             
         nome_investimento = tipo_inv[0].upper()
-        
-        # Valor padrão para investimentos sem variação cambial direta
         cotacao_compra = 1.00 
 
-        # 3. Regras Específicas por Ativo
+        # 3. Regras Específicas por Ativo com Logs de Conexão
         if 'BITCOIN' in nome_investimento or 'BTC' in nome_investimento:
             print("🌐 Conectando à AwesomeAPI... Buscando cotação do Bitcoin...")
             cotacao_compra = obter_cotacao_moeda('BTC-BRL')
@@ -96,14 +90,13 @@ def investir(usuario_id, investimento_id, valor_reais):
             print(f"🔒 Seu rendimento foi travado nesta taxa a partir de hoje!")
 
         elif 'FUNDO' in nome_investimento or 'FII' in nome_investimento:
-            # Mantendo suporte para FII com uma taxa fictícia de dividendo fixo simulado
             cotacao_compra = 9.50 
             print(f"🏢 Investindo em Fundos Imobiliários (Rendimento estimado: {cotacao_compra}% a.a.)")
 
         # 4. Deduz o valor do saldo do usuário
         cursor.execute("UPDATE usuarios SET saldo = saldo - %s WHERE id = %s", (valor_reais, usuario_id))
 
-        # 5. Registra o investimento na carteira do usuário (salvando a taxa em cotacao_compra)
+        # 5. Registra o investimento na carteira do usuário (Neon)
         cursor.execute("""
             INSERT INTO investimentos_usuarios (usuario_id, investimento_id, valor_investido, cotacao_compra)
             VALUES (%s, %s, %s, %s)
@@ -115,7 +108,6 @@ def investir(usuario_id, investimento_id, valor_reais):
             VALUES (%s, %s, %s)
         """, (usuario_id, f"INVESTIMENTO_{nome_investimento.replace(' ', '_')}", valor_reais))
 
-        # Confirma a transação no banco de forma segura
         conexao.commit()
         print(f"✅ Sucesso! Você investiu R$ {valor_reais:.2f} em {nome_investimento}.")
         return True
@@ -132,7 +124,6 @@ def resgatar_investimento(usuario_id):
     """
     Lista a carteira do usuário automaticamente e processa o resgate pelo ID escolhido.
     """
-    # MELHORIA: Mostra a carteira do usuário logo de cara para ele ver os IDs disponíveis
     print("\n--- SUA CARTEIRA DE INVESTIMENTOS ATIVA ---")
     exibir_carteira_investimentos(usuario_id)
     
@@ -143,13 +134,10 @@ def resgatar_investimento(usuario_id):
         return False
 
     conexao = obter_conexao()
-    if not conexao:
-        return False
-
+    if not conexao: return False
     cursor = conexao.cursor()
 
     try:
-        # QUERY CORRIGIDA: trazendo 'investimento_id' para fazer o JOIN perfeito com o Neon
         query = """
             SELECT iu.valor_investido, iu.cotacao_compra, iu.data_aplicacao, ti.nome
             FROM investimentos_usuarios iu
@@ -161,7 +149,6 @@ def resgatar_investimento(usuario_id):
 
         if not investimento:
             print("❌ Erro: Investimento não encontrado ou não pertence a você.")
-            print("💡 Dica: Verifique no topo da tela o número que aparece na coluna 'ID'.")
             return False
 
         valor_investido = float(investimento[0])
@@ -169,25 +156,22 @@ def resgatar_investimento(usuario_id):
         data_aplicacao = investimento[2]
         nome_produto = investimento[3].upper()
 
-        # Calcula a quantidade de dias passados desde a aplicação
         dias_passados = (datetime.now() - data_aplicacao).days
-        if dias_passados < 0: 
-            dias_passados = 0
+        if dias_passados < 0: dias_passados = 0
 
-        valor_atualizado = valor_investido
+        valor_updated = valor_investido
         detalhe_calculo = ""
 
-        # Executa o cálculo matemático baseado no tipo de ativo
+        # ─── CÁLCULO BASEADO NO TIPO DE ATIVO ───
         if 'BITCOIN' in nome_produto or 'BTC' in nome_produto:
             print("\n🌐 Conectando à AwesomeAPI para buscar cotação atual do Bitcoin...")
-            from investimento.investimento import obter_cotacao_moeda
             cotacao_atual = obter_cotacao_moeda('BTC-BRL')
             if not cotacao_atual:
                 print("❌ Operação cancelada: Não foi possível obter a cotação atual do BTC.")
                 return False
             
             fracao_btc = valor_investido / cotacao_compra
-            valor_atualizado = fracao_btc * cotacao_atual
+            valor_updated = fracao_btc * cotacao_atual
             
             detalhe_calculo = (
                 f"🪙 Cotação de Compra: R$ {cotacao_compra:,.2f}\n"
@@ -198,23 +182,24 @@ def resgatar_investimento(usuario_id):
         elif 'CDB' in nome_produto or 'FUNDO' in nome_produto or 'FII' in nome_produto:
             taxa_anual = cotacao_compra
             taxa_diaria = (1 + (taxa_anual / 100)) ** (1 / 365) - 1
-            valor_atualizado = valor_investido * ((1 + taxa_diaria) ** dias_passados)
+            valor_updated = valor_investido * ((1 + taxa_diaria) ** dias_passados)
             
             detalhe_calculo = (
                 f"📈 Taxa Contratada:   {taxa_anual}% ao ano\n"
                 f"🗓️ Tempo de Aplicação: {dias_passados} dias decorridos"
             )
 
-        lucro_prejuizo = valor_atualizado - valor_investido
+        lucro_prejuizo = valor_updated - valor_investido
         
+        # ─── PAINEL VISUAL DE RESULTADOS OPERACIONAIS ───
         print("\n" + "="*50)
-        print("汇 PAINEL DE FECHAMENTO DE INVESTIMENTO 汇")
+        print("🏦 PAINEL DE FECHAMENTO DE INVESTIMENTO 🏦")
         print("="*50)
         print(f"Produto:               {nome_produto}")
         print(f"Valor Investido:       R$ {valor_investido:.2f}")
         print(detalhe_calculo)
         print("-"*50)
-        print(f"Valor de Resgate:      R$ {valor_atualizado:.2f}")
+        print(f"Valor de Resgate:      R$ {valor_updated:.2f}")
         
         if lucro_prejuizo > 0:
             print(f"🟢 Resultado Operacional: +R$ {lucro_prejuizo:.2f} (LUCRO)")
@@ -229,13 +214,13 @@ def resgatar_investimento(usuario_id):
             print("❌ Operação cancelada pelo usuário.")
             return False
 
-        # Transação no Banco de Dados
-        cursor.execute("UPDATE usuarios SET saldo = saldo + %s WHERE id = %s", (valor_atualizado, usuario_id))
+        # Transações atômicas no Banco de Dados
+        cursor.execute("UPDATE usuarios SET saldo = saldo + %s WHERE id = %s", (valor_updated, usuario_id))
         cursor.execute("DELETE FROM investimentos_usuarios WHERE id = %s", (investimento_usuario_id,))
         cursor.execute("""
             INSERT INTO movimentacoes (usuario_id, tipo, valor)
             VALUES (%s, %s, %s)
-        """, (usuario_id, f"RESGATE_{nome_produto.replace(' ', '_')}", valor_atualizado))
+        """, (usuario_id, f"RESGATE_{nome_produto.replace(' ', '_')}", valor_updated))
 
         conexao.commit()
         print("\n✅ Resgate concluído com sucesso! Seu saldo foi atualizado.")

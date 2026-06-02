@@ -7,10 +7,9 @@ def realizar_deposito(usuario_id, valor):
         return False
 
     conexao = obter_conexao()
-    if not conexao:
-        return False
-
+    if not conexao: return False
     cursor = conexao.cursor()
+
     try:
         # Atualiza o saldo do usuário
         cursor.execute("UPDATE usuarios SET saldo = saldo + %s WHERE id = %s", (valor, usuario_id))
@@ -34,19 +33,18 @@ def realizar_deposito(usuario_id, valor):
 
 
 def realizar_transferencia(id_remetente, email_destino, valor):
-    """Realiza a transferência entre dois usuários via E-mail (Garante ACID via Banco)."""
+    """Realiza a transferência entre dois usuários via E-mail (Garante ACID e evita concorrência)."""
     if valor <= 0:
-        print("❌ Erro: O valor da transferência deve ser maior que zero.")
+        print("❌ Erro: O valor do transferência deve ser maior que zero.")
         return False
 
     conexao = obter_conexao()
-    if not conexao:
-        return False
-
+    if not conexao: return False
     cursor = conexao.cursor()
+
     try:
-        # 1. Verifica o saldo e o e-mail do remetente
-        cursor.execute("SELECT saldo, email FROM usuarios WHERE id = %s", (id_remetente,))
+        # 1. Verifica o saldo aplicando FOR UPDATE para bloquear a linha contra cliques duplos simultâneos
+        cursor.execute("SELECT saldo, email FROM usuarios WHERE id = %s FOR UPDATE", (id_remetente,))
         resultado_remetente = cursor.fetchone()
         
         if not resultado_remetente:

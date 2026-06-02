@@ -3,32 +3,34 @@ import re
 from database.database import obter_conexao
 
 def validar_nome(nome):
-
     nome = nome.strip()
-
     regras = r"^[A-Za-zÀ-ÖØ-öø-ÿ]+(\s+[A-Za-zÀ-ÖØ-öø-ÿ]+)+$"
-
     if not re.match(regras, nome) or len(nome) < 5:
         return False
     return True
 
 def validar_email(email):
-    """Valida se o e-mail segue o formato padrão (usuario@dominio.com)."""
     email = email.strip().lower()
-    padrao = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-    return bool(re.match(padrao, email))
+    regra = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    return bool(re.match(regra, email))
+
+def validar_telefone(telefone):
+
+    nums = ''.join(filter(str.isdigit, telefone))
+
+    regra = r"^[1-9]{2}9[0-9]{8}$"
+    return bool(re.match(regra, nums))
 
 def validar_senha(senha):
-    """Valida se a senha atende aos requisitos mínimos."""
     if len(senha) < 8: return False
-    if not re.search(r"[A-Z]", senha): return False
+    if not re.search(r"[A-Z]", password := senha): return False
     if not re.search(r"[a-z]", senha): return False
     if not re.search(r"\d", senha): return False
     if not re.search(r"[!@#$%^&*(),.?\":{}|<>_\-+=/\\]", senha): return False
     return True
 
 def validar_cpf(cpf):
-    """Valida se o CPF possui a estrutura e dígitos verificadores corretos."""
+    # Mantida a sua validação original por algoritmo matemático
     cpf = ''.join(filter(str.isdigit, cpf))
     if len(cpf) != 11 or cpf == cpf[0] * 11: return False
     
@@ -39,34 +41,45 @@ def validar_cpf(cpf):
         if resto != int(cpf[j - 1]): return False
     return True
 
-def criar_usuario(nome, email, cpf, senha, telefone, idade):
-    """Garante unicamente a persistência do usuário após validação prévia."""
-    conexao = obter_conexao()
-    if not conexao: return False
 
+
+def criar_usuario(nome, email, cpf, senha, telefone, idade):
+    conexao = obter_conexao()
+    if not conexao: return None
     cursor = conexao.cursor()
+    
+    cpf_limpo = ''.join(filter(str.isdigit, cpf))
+    
+    # Adicionado RETURNING para capturar os dados gerados pelo banco
     sql = """
         INSERT INTO usuarios (nome, email, cpf, senha, telefone, idade)
         VALUES (%s, %s, %s, %s, %s, %s)
+        RETURNING id, nome, saldo
     """
     senha_hash = bcrypt.hashpw(senha.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
     try:
-        # Garante o salvamento com strings limpas (sem espaços sobressalentes)
-        cursor.execute(sql, (nome.strip(), email.strip().lower(), cpf, senha_hash, telefone, idade))       
+        cursor.execute(sql, (nome.strip(), email.strip().lower(), cpf_limpo, senha_hash, telefone, idade)) 
+        
+        # Recupera os dados retornados pelo INSERT
+        id_gerado, nome_gerado, saldo_gerado = cursor.fetchone()
+        
         conexao.commit()
-        print(f"✅ Usuário {nome} cadastrado com sucesso!")
-        return True
+        print(f"✅ Usuário {nome_gerado} cadastrado com sucesso!")
+        
+        # Retorna o dicionário no mesmo molde esperado pelo menu_logado
+        return {"id": id_gerado, "nome": nome_gerado, "saldo": float(saldo_gerado)}
+        
     except Exception as e:
         conexao.rollback()
         print(f"❌ Erro ao salvar no banco. CPF ou E-mail já existentes. Detalhes: {e}")
-        return False
+        return None
     finally:
         cursor.close()
         conexao.close()
 
 def autenticar_usuario(cpf, senha):
-    """Verifica as credenciais informadas contra o banco de dados."""
+
     conexao = obter_conexao()
     if not conexao: return None
     cursor = conexao.cursor()
