@@ -153,7 +153,7 @@ def resgatar_investimento(usuario_id):
 
         valor_investido = float(investimento[0])
         cotacao_compra = float(investimento[1])
-        data_aplicacao = investimento[2]
+        data_aplicacao = investimento[2].replace(tzinfo=None)
         nome_produto = investimento[3].upper()
 
         dias_passados = (datetime.now() - data_aplicacao).days
